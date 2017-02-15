@@ -25,7 +25,7 @@ yum install virt-who
 cr_password=`virt-who-password --password "#{cr_password}" 2> /dev/null`
 user_password=`virt-who-password --password "#{service_user_password}" 2> /dev/null`
 
-cat > /etc/virt-who.d/#{identifier}.conf << EOF
+cat > #{config_file_path} << EOF
 [#{identifier}]
 type=#{type}
 hypervisor_id=#{hypervisor_id}
@@ -50,9 +50,14 @@ EOS
       "#{interval_minute} #{interval_hour} * * * virt-who #{virt_who_arguments}"
     end
 
+    def config_file_path
+      "/etc/virt-who.d/#{identifier}.conf"
+    end
+
     def virt_who_arguments
-      args = "--one-shot"
+      args = "--one-shot "
       args << "--debug " if config.debug?
+      args << "--config=#{config_file_path} "
       args
     end
 
