@@ -17,3 +17,4 @@
 </div>
 
 <%= link_to _('Change this configuration'), edit_foreman_virt_who_configure_config_path(@config), :class => 'btn btn-default' %>
+<%= link_to _('Deploy on Satellite server'), deploy_foreman_virt_who_configure_config_path(@config), :class => 'btn btn-default', :method => 'post' %>

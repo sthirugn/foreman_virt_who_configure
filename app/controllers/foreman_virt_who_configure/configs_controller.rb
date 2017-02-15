@@ -2,7 +2,7 @@ module ForemanVirtWhoConfigure
   class ConfigsController < ::ForemanVirtWhoConfigure::ApplicationController
     include Foreman::Controller::AutoCompleteSearch
     include ForemanVirtWhoConfigure::Concerns::ConfigParameters if defined?(Foreman::ParameterFilter)
-    before_action :find_resource, :only => [:edit, :update, :destroy, :show]
+    before_action :find_resource, :only => [:edit, :update, :destroy, :show, :deploy]
 
     # in 1.11 we can't use welcome from application controller since it does not work with namespaces
     def welcome
@@ -68,6 +68,21 @@ module ForemanVirtWhoConfigure
       end
     end
 
+    def deploy
+      host = nil
+      Taxonomy.no_taxonomy_scope do
+      # satellite box is registered after installation but not in any org/loc, that's why we need .unscoped
+        host = Host.unscoped.find_by_name(URI.parse(Setting[:foreman_url]).host)
+      end
+      # TODO add verification
+      # host object does not work as a target
+      host.update_attribute :organization_id, @config.organization_id
+      composer = JobInvocationComposer.for_feature('deploy_virt_who_config', "name = #{host.name}", :config_id => @config.id.to_s)
+      composer.save!
+      composer.trigger(true)
+      redirect_to job_invocation_path(composer.job_invocation)
+    end
+
     def auto_complete_controller_name
       'foreman_virt_who_configure_configs'
     end
@@ -82,6 +97,17 @@ module ForemanVirtWhoConfigure
         super
       else
         params[:foreman_virt_who_configure_config]
+      end
+    end
+
+    private
+
+    def action_permission
+      case params[:action]
+        when 'deploy'
+          :create
+        else
+          super
       end
     end
   end

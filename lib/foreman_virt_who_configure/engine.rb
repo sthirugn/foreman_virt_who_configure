@@ -23,7 +23,7 @@ module ForemanVirtWhoConfigure
         # Add permissions
         security_block :foreman_virt_who_configure do
           permission :view_virt_who_config, :'foreman_virt_who_configure/configs' => [:index, :show], :resource => 'ForemanVirtWhoConfigure::Config'
-          permission :create_virt_who_config, :'foreman_virt_who_configure/configs' => [:new, :create], :resource => 'ForemanVirtWhoConfigure::Config'
+          permission :create_virt_who_config, :'foreman_virt_who_configure/configs' => [:new, :create, :deploy], :resource => 'ForemanVirtWhoConfigure::Config'
           permission :edit_virt_who_config, :'foreman_virt_who_configure/configs' => [:edit, :update], :resource => 'ForemanVirtWhoConfigure::Config'
           permission :destroy_virt_who_config, :'foreman_virt_who_configure/configs' => [:destroy], :resource => 'ForemanVirtWhoConfigure::Config'
         end
@@ -40,6 +40,12 @@ module ForemanVirtWhoConfigure
 
         # add dashboard widget
         # widget 'foreman_virt_who_configure_widget', name: N_('Foreman plugin template widget'), sizex: 4, sizey: 1
+        if ForemanVirtWhoConfigure.with_remote_execution?
+          # RemoteExecutionFeature.register(:deploy_virt_who_config, N_("Virt who configure: deploy"), :description => N_("Deploy virt-who configuration based on config"), :provided_inputs => ['config_id'])
+          RemoteExecutionFeature.register(:deploy_virt_who_config, N_("Virt who configure: deploy"), :description => N_("Deploy virt-who configuration based on config"), :provided_inputs => ['config_id'])
+        end
+
+        # extend_template_helpers ForemanVirtWhoConfigure::Renderer
       end
     end
 
@@ -61,12 +67,12 @@ module ForemanVirtWhoConfigure
 
     # Include concerns in this config.to_prepare block
     config.to_prepare do
-      begin
-        Host::Managed.send(:include, ForemanVirtWhoConfigure::HostExtensions)
-        HostsHelper.send(:include, ForemanVirtWhoConfigure::HostsHelperExtensions)
-      rescue => e
-        Rails.logger.warn "ForemanVirtWhoConfigure: skipping engine hook (#{e})"
+      mod = ForemanVirtWhoConfigure::Renderer
+      (TemplatesController.descendants + [ TemplatesController, UnattendedHelper ]).each do |klass|
+        klass.send(:include, mod)
       end
+      # allowed_template_helpers(*(mod.public_instance_methods - Module.public_instance_methods))
+      Foreman::Renderer::ALLOWED_HELPERS.concat([:virt_who_config_file]).uniq!
     end
 
     rake_tasks do
@@ -88,5 +94,10 @@ module ForemanVirtWhoConfigure
 
   def self.use_relative_model_naming?
     true
+  end
+
+  # check whether foreman_remote_execution to integrate is available in the system
+  def self.with_remote_execution?
+    (RemoteExecutionFeature rescue false) ? true : false
   end
 end

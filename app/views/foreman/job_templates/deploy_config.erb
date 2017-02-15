@@ -1,0 +1,14 @@
+<%#
+kind: job_template
+name: Deploy virt-who configuration
+job_category: Virt-who
+description_format: 'Deploy virt-who configuration'
+feature: deploy_virt_who_config
+provider_type: SSH
+template_inputs:
+- name: config_id
+  description: An id of virt-who configuration to deploy
+  input_type: user
+  required: true
+%>
+<%= render_template 'Run Command - SSH Default', :command => virt_who_config_file(input('config_id')) %>
